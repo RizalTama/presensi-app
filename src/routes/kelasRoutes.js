@@ -145,6 +145,116 @@ router.get('/:id', (req, res) => {
   });
 });
 
+// GET Kelas berdasarkan ID Guru
+/**
+ * @swagger
+ * /api/kelas/guru/{guru_id}:
+ *   get:
+ *     summary: Mengambil semua data kelas berdasarkan ID Guru
+ *     tags: [Kelas]
+ *     parameters:
+ *       - in: path
+ *         name: guru_id
+ *         schema:
+ *           type: integer
+ *         required: true
+ *         description: ID Guru yang mengajar kelas
+ *     responses:
+ *       200:
+ *         description: Daftar kelas yang diajar oleh guru berhasil diambil.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Kelas'
+ *       400:
+ *         description: ID Guru tidak valid.
+ *       500:
+ *         description: Terjadi kesalahan pada server.
+ */
+router.get('/guru/:guru_id', (req, res) => {
+  const { guru_id } = req.params;
+
+  // Validasi ID harus integer
+  if (isNaN(guru_id) || !Number.isInteger(Number(guru_id))) {
+    return res.status(400).json({ message: 'ID Guru harus berupa angka bulat.' });
+  }
+
+  const sql = `
+    SELECT k.id, k.nama_kelas, k.guru_id, k.waktu_mulai, k.waktu_selesai, k.ruangan, k.jumlah_siswa, g.nama_lengkap AS nama_guru
+    FROM Kelas k
+    JOIN Guru g ON k.guru_id = g.id
+    WHERE k.guru_id = ?
+  `;
+
+  db.query(sql, [guru_id], (err, results) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ message: 'Error querying the database' });
+    }
+    res.json(results);
+  });
+});
+
+// GET Kelas berdasarkan ID Siswa
+/**
+ * @swagger
+ * /api/kelas/siswa/{siswa_id}:
+ *   get:
+ *     summary: Mengambil data kelas berdasarkan ID Siswa
+ *     tags: [Kelas]
+ *     parameters:
+ *       - in: path
+ *         name: siswa_id
+ *         schema:
+ *           type: integer
+ *         required: true
+ *         description: ID Siswa yang terdaftar di kelas
+ *     responses:
+ *       200:
+ *         description: Data kelas tempat siswa terdaftar berhasil diambil.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Kelas'
+ *       400:
+ *         description: ID Siswa tidak valid.
+ *       404:
+ *         description: Siswa atau kelasnya tidak ditemukan.
+ *       500:
+ *         description: Terjadi kesalahan pada server.
+ */
+router.get('/siswa/:siswa_id', (req, res) => {
+  const { siswa_id } = req.params;
+
+  // Validasi ID harus integer
+  if (isNaN(siswa_id) || !Number.isInteger(Number(siswa_id))) {
+    return res.status(400).json({ message: 'ID Siswa harus berupa angka bulat.' });
+  }
+
+  const sql = `
+    SELECT 
+      k.id, k.nama_kelas, k.guru_id, k.waktu_mulai, k.waktu_selesai, k.ruangan, k.jumlah_siswa, 
+      g.nama_lengkap AS nama_guru
+    FROM Kelas k
+    JOIN Siswa s ON s.kelas_id = k.id
+    JOIN Guru g ON k.guru_id = g.id
+    WHERE s.id = ?
+  `;
+
+  db.query(sql, [siswa_id], (err, results) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ message: 'Error querying the database' });
+    }
+    if (results.length === 0) {
+      return res.status(404).json({ message: 'Kelas untuk siswa ini tidak ditemukan.' });
+    }
+    res.json(results[0]);
+  });
+});
+
 // POST (Tambah Kelas)
 /**
  * @swagger
