@@ -36,11 +36,13 @@ exports.login = (req, res) => {
 
       const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' });
 
-      // Kirimkan token dan role admin, beserta nama lengkap
+      // Kirimkan token dan role admin, beserta nama lengkap dan ID
       return res.json({
         message: `Selamat datang, ${admin.nama_lengkap}`,
         token: token,
         role: 'admin',
+        id: admin.id,
+        nama_lengkap: admin.nama_lengkap
       });
     }
 
@@ -71,11 +73,13 @@ exports.login = (req, res) => {
 
         const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' });
 
-        // Kirimkan token dan role guru, beserta nama lengkap
+        // Kirimkan token dan role guru, beserta nama lengkap dan ID
         return res.json({
           message: `Selamat datang, ${guru.nama_lengkap}`,
           token: token,
           role: 'guru',
+          id: guru.id,
+          nama_lengkap: guru.nama_lengkap
         });
       }
 
@@ -106,11 +110,13 @@ exports.login = (req, res) => {
 
           const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' });
 
-          // Kirimkan token dan role siswa, beserta nama lengkap
+          // Kirimkan token dan role siswa, beserta nama lengkap dan ID
           return res.json({
             message: `Selamat datang, ${siswa.nama_lengkap}`,
             token: token,
             role: 'siswa',
+            id: siswa.id,
+            nama_lengkap: siswa.nama_lengkap
           });
         }
 
