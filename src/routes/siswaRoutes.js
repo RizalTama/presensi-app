@@ -161,9 +161,17 @@ router.post('/', (req, res) => {
       return res.status(500).json({ message: 'Error adding siswa' });
     }
 
-    res.status(201).json({
-      message: 'Siswa added successfully',
-      siswaId: results.insertId,
+    // Mengambil data siswa yang baru ditambahkan
+    const getSiswaSql = 'SELECT * FROM Siswa WHERE id = ?';
+    db.query(getSiswaSql, [results.insertId], (err, siswaResults) => {
+      if (err) {
+        console.error(err);
+        return res.status(500).json({ message: 'Error retrieving siswa data' });
+      }
+      res.status(201).json({
+        message: 'Siswa added successfully',
+        siswa: siswaResults[0],
+      });
     });
   });
 });
@@ -274,7 +282,18 @@ router.put('/:id', (req, res) => {
       return res.status(404).json({ message: 'Siswa not found' });
     }
 
-    res.json({ message: 'Siswa updated successfully' });
+    // Mengambil data siswa yang diperbarui
+    const getSiswaSql = 'SELECT * FROM Siswa WHERE id = ?';
+    db.query(getSiswaSql, [id], (err, siswaResults) => {
+      if (err) {
+        console.error(err);
+        return res.status(500).json({ message: 'Error retrieving updated siswa data' });
+      }
+      res.json({
+        message: 'Siswa updated successfully',
+        siswa: siswaResults[0],
+      });
+    });
   });
 });
 

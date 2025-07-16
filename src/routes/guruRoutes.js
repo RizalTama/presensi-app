@@ -1,7 +1,7 @@
-// routes/guruRoutes.js
 const express = require('express');
 const router = express.Router();
 const db = require('../config/database');
+const crypto = require('crypto');
 
 /**
  * @swagger
@@ -70,7 +70,7 @@ const db = require('../config/database');
  *         description: Terjadi kesalahan pada server.
  */
 router.get('/', (req, res) => {
-  const sql = 'SELECT * FROM Guru';
+  const sql = 'SELECT g.id, g.nama_lengkap, g.nip, g.email, g.nomor_handphone, g.password, mk.nama_matkul FROM Guru g JOIN Mata_Kuliah mk ON g.mata_kuliah_id = mk.id';
   
   db.query(sql, (err, results) => {
     if (err) {
@@ -81,7 +81,7 @@ router.get('/', (req, res) => {
   });
 });
 
-// routes/guruRoutes.js
+// GET guru berdasarkan ID
 /**
  * @swagger
  * /api/guru/{id}:
@@ -109,7 +109,7 @@ router.get('/', (req, res) => {
  */
 router.get('/:id', (req, res) => {
   const { id } = req.params;
-  const sql = 'SELECT * FROM Guru WHERE id = ?';
+  const sql = 'SELECT g.id, g.nama_lengkap, g.nip, g.email, g.nomor_handphone, g.password, mk.nama_matkul FROM Guru g JOIN Mata_Kuliah mk ON g.mata_kuliah_id = mk.id WHERE g.id = ?';
 
   db.query(sql, [id], (err, results) => {
     if (err) {
@@ -140,6 +140,10 @@ router.get('/:id', (req, res) => {
  *     responses:
  *       201:
  *         description: Guru berhasil ditambahkan.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Guru'
  *       500:
  *         description: Terjadi kesalahan pada server.
  */
@@ -153,10 +157,19 @@ router.post('/', (req, res) => {
       console.error(err);
       return res.status(500).json({ message: 'Error adding guru' });
     }
-    
-    res.status(201).json({
-      message: 'Guru added successfully',
-      guruId: results.insertId,
+
+    // Mendapatkan data guru yang baru ditambahkan
+    const newGuruSQL = 'SELECT g.id, g.nama_lengkap, g.nip, g.email, g.nomor_handphone, g.password, mk.nama_matkul FROM Guru g JOIN Mata_Kuliah mk ON g.mata_kuliah_id = mk.id WHERE g.id = ?';
+    db.query(newGuruSQL, [results.insertId], (err, newResults) => {
+      if (err) {
+        console.error(err);
+        return res.status(500).json({ message: 'Error retrieving the added guru' });
+      }
+
+      res.status(201).json({
+        message: 'Guru added successfully',
+        guru: newResults[0],  // Mengembalikan data guru yang baru ditambahkan
+      });
     });
   });
 });
@@ -183,6 +196,10 @@ router.post('/', (req, res) => {
  *     responses:
  *       200:
  *         description: Guru berhasil diperbarui.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Guru'
  *       404:
  *         description: Guru tidak ditemukan.
  *       500:
@@ -208,9 +225,24 @@ router.put('/:id', (req, res) => {
       return res.status(404).json({ message: 'Guru not found' });
     }
 
-    res.json({ message: 'Guru updated successfully' });
+    // Mendapatkan data guru yang sudah diperbarui
+    const updatedGuruSQL = 'SELECT g.id, g.nama_lengkap, g.nip, g.email, g.nomor_handphone, g.password, mk.nama_matkul FROM Guru g JOIN Mata_Kuliah mk ON g.mata_kuliah_id = mk.id WHERE g.id = ?';
+    db.query(updatedGuruSQL, [id], (err, updatedResults) => {
+      if (err) {
+        console.error(err);
+        return res.status(500).json({ message: 'Error retrieving updated guru' });
+      }
+
+      res.json({
+        message: 'Guru updated successfully',
+        guru: updatedResults[0],  // Mengembalikan data guru yang sudah diperbarui
+      });
+    });
   });
 });
+
+
+
 
 /**
  * @swagger
@@ -235,7 +267,19 @@ router.put('/:id', (req, res) => {
  */
 router.delete('/:id', (req, res) => {
   const { id } = req.params;
-  const sql = 'DELETE FROM Guru WHERE id = ?';
+
+  // Pertama, dapatkan data guru sebelum dihapus
+  const getGuruSql = 'SELECT g.id, g.nama_lengkap, g.nip, g.email, g.nomor_handphone, g.password, mk.nama_matkul FROM Guru g JOIN Mata_Kuliah mk ON g.mata_kuliah_id = mk.id WHERE g.id = ?';
+  db.query(getGuruSql, [id], (err, guruResults) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ message: 'Error retrieving guru data' });
+    }
+
+    const guruToDelete = guruResults[0];
+
+    // Kemudian hapus guru
+    const sql = 'DELETE FROM Guru WHERE id = ?';
 
   db.query(sql, [id], (err, results) => {
     if (err) {
@@ -246,8 +290,14 @@ router.delete('/:id', (req, res) => {
     if (results.affectedRows === 0) {
       return res.status(404).json({ message: 'Guru not found' });
     }
-    
-    res.json({ message: 'Guru deleted successfully' });
+
+    res.json({ 
+      message: 'Guru deleted successfully',
+      guru: guruToDelete // Mengembalikan data guru yang dihapus
+    });
   });
 });
+});
+
+
 module.exports = router;

@@ -182,9 +182,17 @@ router.post('/', (req, res) => {
         return res.status(500).json({ message: 'Error adding kelas' });
       }
 
-      res.status(201).json({
-        message: 'Kelas added successfully',
-        kelasId: id,  // Mengembalikan ID yang telah dimasukkan
+      // Mengambil data kelas yang baru ditambahkan
+      const getKelasSql = 'SELECT * FROM Kelas WHERE id = ?';
+      db.query(getKelasSql, [id], (err, kelasResults) => {
+        if (err) {
+          console.error(err);
+          return res.status(500).json({ message: 'Error retrieving kelas data' });
+        }
+        res.status(201).json({
+          message: 'Kelas added successfully',
+          kelas: kelasResults[0],
+        });
       });
     });
   });
@@ -262,7 +270,18 @@ router.put('/:id', (req, res) => {
         return res.status(500).json({ message: 'Error updating kelas' });
       }
 
-      res.json({ message: 'Kelas updated successfully' });
+      // Mengambil data kelas yang diperbarui
+      const getKelasSql = 'SELECT * FROM Kelas WHERE id = ?';
+      db.query(getKelasSql, [id], (err, kelasResults) => {
+        if (err) {
+          console.error(err);
+          return res.status(500).json({ message: 'Error retrieving updated kelas data' });
+        }
+        res.json({
+          message: 'Kelas updated successfully',
+          kelas: kelasResults[0],
+        });
+      });
     });
   });
 });
