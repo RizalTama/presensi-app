@@ -80,7 +80,7 @@ exports.login = (req, res) => {
       }
 
       // Jika data tidak ditemukan di tabel Admin dan Guru, cek di tabel Siswa
-      const sqlSiswa = 'SELECT * FROM Siswa WHERE nip_nis = ?';
+      const sqlSiswa = 'SELECT * FROM Siswa WHERE nis = ?';
       db.query(sqlSiswa, [nip_nis], (err, resultsSiswa) => {
         if (err) {
           console.error(err);
@@ -99,7 +99,7 @@ exports.login = (req, res) => {
           // Membuat JWT token untuk siswa
           const payload = {
             id: siswa.id,
-            nip_nis: siswa.nip_nis,
+            nis: siswa.nis,
             role: 'siswa', // Role siswa
             nama_lengkap: siswa.nama_lengkap, // Menambahkan nama lengkap siswa
           };
