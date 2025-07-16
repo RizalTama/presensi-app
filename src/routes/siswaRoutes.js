@@ -199,21 +199,50 @@ router.post('/', (req, res) => {
  *         description: Terjadi kesalahan pada server.
  */
 router.delete('/:id', (req, res) => {
-  const { id } = req.params;
-  const sql = 'DELETE FROM Siswa WHERE id = ?';
+    const { id } = req.params;
 
-  db.query(sql, [id], (err, results) => {
-    if (err) {
-      console.error(err);
-      return res.status(500).json({ message: 'Error deleting siswa' });
-    }
+    // 1. Dapatkan data siswa sebelum dihapus
+    const getSiswaSql = 'SELECT * FROM Siswa WHERE id = ?';
+    db.query(getSiswaSql, [id], (err, siswaResults) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).json({ message: 'Error retrieving siswa data' });
+        }
 
-    if (results.affectedRows === 0) {
-      return res.status(404).json({ message: 'Siswa not found' });
-    }
+        if (siswaResults.length === 0) {
+            return res.status(404).json({ message: 'Siswa not found' });
+        }
 
-    res.json({ message: 'Siswa deleted successfully' });
-  });
+        const siswaToDelete = siswaResults[0];
+
+        // 2. Hapus data terkait di laporan_kehadiran
+        const deleteLaporanSql = 'DELETE FROM Laporan_Kehadiran WHERE siswa_id = ?';
+        db.query(deleteLaporanSql, [id], (err, deleteLaporanResults) => {
+            if (err) {
+                console.error(err);
+                return res.status(500).json({ message: 'Error deleting related reports' });
+            }
+
+            // 3. Hapus siswa setelah laporan dihapus
+            const deleteSiswaSql = 'DELETE FROM Siswa WHERE id = ?';
+            db.query(deleteSiswaSql, [id], (err, deleteSiswaResults) => {
+                if (err) {
+                    console.error(err);
+                    return res.status(500).json({ message: 'Error deleting siswa' });
+                }
+
+                if (deleteSiswaResults.affectedRows === 0) {
+                    // Ini seharusnya tidak terjadi jika langkah sebelumnya berhasil, tetapi kita tetap periksa
+                    return res.status(404).json({ message: 'Siswa not found' });
+                }
+
+                res.json({
+                    message: 'Siswa deleted successfully',
+                    siswa: siswaToDelete, // Mengembalikan data siswa yang dihapus
+                });
+            });
+        });
+    });
 });
 
 // PUT (Update Siswa)

@@ -18,6 +18,8 @@ const db = require('../config/database');
  *           type: string
  *         guru_id:
  *           type: integer
+ *         nama_guru:
+ *           type: string
  *         waktu_mulai:
  *           type: string
  *           format: time
@@ -73,7 +75,11 @@ const db = require('../config/database');
  *         description: Terjadi kesalahan pada server.
  */
 router.get('/', (req, res) => {
-  const sql = 'SELECT * FROM Kelas';
+  const sql = `
+    SELECT k.id, k.nama_kelas, k.guru_id, k.waktu_mulai, k.waktu_selesai, k.ruangan, k.jumlah_siswa, g.nama_lengkap AS nama_guru
+    FROM Kelas k
+    JOIN Guru g ON k.guru_id = g.id
+  `;
   
   db.query(sql, (err, results) => {
     if (err) {
@@ -118,7 +124,12 @@ router.get('/:id', (req, res) => {
     return res.status(400).json({ message: 'ID harus bertipe integer' });
   }
 
-  const sql = 'SELECT * FROM Kelas WHERE id = ?';
+  const sql = `
+    SELECT k.id, k.nama_kelas, k.guru_id, k.waktu_mulai, k.waktu_selesai, k.ruangan, k.jumlah_siswa, g.nama_lengkap AS nama_guru
+    FROM Kelas k
+    JOIN Guru g ON k.guru_id = g.id
+    WHERE k.id = ?
+  `;
   
   db.query(sql, [id], (err, results) => {
     if (err) {
@@ -183,7 +194,7 @@ router.post('/', (req, res) => {
       }
 
       // Mengambil data kelas yang baru ditambahkan
-      const getKelasSql = 'SELECT * FROM Kelas WHERE id = ?';
+      const getKelasSql = 'SELECT k.id, k.nama_kelas, k.guru_id, k.waktu_mulai, k.waktu_selesai, k.ruangan, k.jumlah_siswa, g.nama_lengkap AS nama_guru FROM Kelas k JOIN Guru g ON k.guru_id = g.id WHERE k.id = ?';
       db.query(getKelasSql, [id], (err, kelasResults) => {
         if (err) {
           console.error(err);
@@ -271,7 +282,7 @@ router.put('/:id', (req, res) => {
       }
 
       // Mengambil data kelas yang diperbarui
-      const getKelasSql = 'SELECT * FROM Kelas WHERE id = ?';
+      const getKelasSql = 'SELECT k.id, k.nama_kelas, k.guru_id, k.waktu_mulai, k.waktu_selesai, k.ruangan, k.jumlah_siswa, g.nama_lengkap AS nama_guru FROM Kelas k JOIN Guru g ON k.guru_id = g.id WHERE k.id = ?';
       db.query(getKelasSql, [id], (err, kelasResults) => {
         if (err) {
           console.error(err);
@@ -310,25 +321,39 @@ router.put('/:id', (req, res) => {
  */
 router.delete('/:id', (req, res) => {
   const { id } = req.params;
-
-  // Validasi ID harus integer
-  if (!Number.isInteger(Number(id))) {
-    return res.status(400).json({ message: 'ID harus bertipe integer' });
+  
+  // Validasi ID harus integer (meskipun sudah ada middleware, ini untuk keamanan tambahan)
+  if (isNaN(id) || !Number.isInteger(Number(id))) {
+    return res.status(400).json({ message: 'ID kelas harus berupa angka bulat.' });
   }
 
-  const sql = 'DELETE FROM Kelas WHERE id = ?';
-  
-  db.query(sql, [id], (err, results) => {
+  // Ambil data kelas sebelum dihapus
+  const getKelasSql = `
+    SELECT k.*, g.nama_lengkap AS nama_guru
+    FROM Kelas k
+    JOIN Guru g ON k.guru_id = g.id
+    WHERE k.id = ?
+  `;
+  db.query(getKelasSql, [id], (err, kelasResults) => {
     if (err) {
-      console.error(err);
-      return res.status(500).json({ message: 'Error deleting kelas' });
+      console.error('Error retrieving kelas data:', err);
+      return res.status(500).json({ message: 'Gagal mengambil data kelas.', error: err.message });
     }
 
-    if (results.affectedRows === 0) {
-      return res.status(404).json({ message: 'Kelas not found' });
+    if (kelasResults.length === 0) {
+      return res.status(404).json({ message: 'Kelas tidak ditemukan.' });
     }
 
-    res.json({ message: 'Kelas deleted successfully' });
+    const kelasToDelete = kelasResults[0];
+    const deleteSql = 'DELETE FROM Kelas WHERE id = ?';
+    db.query(deleteSql, [id], (err, deleteResults) => {
+      if (err) {
+        console.error('Error deleting kelas:', err);
+        return res.status(500).json({ message: 'Gagal menghapus kelas.', error: err.message });
+      }
+
+      res.json({ message: 'Kelas berhasil dihapus.', kelas: kelasToDelete });
+    });
   });
 });
 
