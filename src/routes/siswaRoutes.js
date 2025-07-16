@@ -76,7 +76,12 @@ const db = require('../config/database');
  *         description: Terjadi kesalahan pada server
  */
 router.get('/', (req, res) => {
-  const sql = 'SELECT * FROM Siswa';
+  const sql = `
+    SELECT 
+      s.*, 
+      k.nama_kelas 
+    FROM Siswa s 
+    LEFT JOIN Kelas k ON s.kelas_id = k.id`;
 
   db.query(sql, (err, results) => {
     if (err) {
@@ -115,7 +120,12 @@ router.get('/', (req, res) => {
  */
 router.get('/:id', (req, res) => {
   const { id } = req.params;
-  const sql = 'SELECT * FROM Siswa WHERE id = ?';
+  const sql = `
+    SELECT 
+      s.*, 
+      k.nama_kelas 
+    FROM Siswa s 
+    LEFT JOIN Kelas k ON s.kelas_id = k.id WHERE s.id = ?`;
 
   db.query(sql, [id], (err, results) => {
     if (err) {
@@ -161,16 +171,27 @@ router.post('/', (req, res) => {
       return res.status(500).json({ message: 'Error adding siswa' });
     }
 
-    // Mengambil data siswa yang baru ditambahkan
-    const getSiswaSql = 'SELECT * FROM Siswa WHERE id = ?';
-    db.query(getSiswaSql, [results.insertId], (err, siswaResults) => {
-      if (err) {
-        console.error(err);
-        return res.status(500).json({ message: 'Error retrieving siswa data' });
-      }
+    const newSiswaId = results.insertId;
+    const getNewSiswaSql = `
+      SELECT 
+        s.*, 
+        k.nama_kelas 
+      FROM Siswa s 
+      LEFT JOIN Kelas k ON s.kelas_id = k.id 
+      WHERE s.id = ?`;
+
+    db.query(getNewSiswaSql, [newSiswaId], (err, newSiswaResult) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).json({ message: 'Error retrieving new siswa data' });
+        }
+        if (newSiswaResult.length === 0) {
+            return res.status(404).json({ message: 'Failed to retrieve new siswa' });
+        }
+
       res.status(201).json({
         message: 'Siswa added successfully',
-        siswa: siswaResults[0],
+        siswa: newSiswaResult[0],
       });
     });
   });
@@ -201,8 +222,13 @@ router.post('/', (req, res) => {
 router.delete('/:id', (req, res) => {
     const { id } = req.params;
 
-    // 1. Dapatkan data siswa sebelum dihapus
-    const getSiswaSql = 'SELECT * FROM Siswa WHERE id = ?';
+    const getSiswaSql = `
+      SELECT 
+        s.*, 
+        k.nama_kelas 
+      FROM Siswa s 
+      LEFT JOIN Kelas k ON s.kelas_id = k.id 
+      WHERE s.id = ?`;
     db.query(getSiswaSql, [id], (err, siswaResults) => {
         if (err) {
             console.error(err);
@@ -311,16 +337,26 @@ router.put('/:id', (req, res) => {
       return res.status(404).json({ message: 'Siswa not found' });
     }
 
-    // Mengambil data siswa yang diperbarui
-    const getSiswaSql = 'SELECT * FROM Siswa WHERE id = ?';
-    db.query(getSiswaSql, [id], (err, siswaResults) => {
-      if (err) {
-        console.error(err);
-        return res.status(500).json({ message: 'Error retrieving updated siswa data' });
-      }
+    const getUpdatedSiswaSql = `
+      SELECT 
+        s.*, 
+        k.nama_kelas 
+      FROM Siswa s 
+      LEFT JOIN Kelas k ON s.kelas_id = k.id 
+      WHERE s.id = ?`;
+
+    db.query(getUpdatedSiswaSql, [id], (err, updatedSiswaResult) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).json({ message: 'Error retrieving updated siswa data' });
+        }
+        if (updatedSiswaResult.length === 0) {
+            return res.status(404).json({ message: 'Failed to retrieve updated siswa' });
+        }
+
       res.json({
         message: 'Siswa updated successfully',
-        siswa: siswaResults[0],
+        siswa: updatedSiswaResult[0],
       });
     });
   });
