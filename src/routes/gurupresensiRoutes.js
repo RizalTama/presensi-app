@@ -41,7 +41,7 @@ function startAutoRefresh(kelas_id) {
         console.log(`Kode presensi untuk kelas ${kelas_id} berhasil diupdate menjadi: ${newKode}`);
       }
     });
-  }, 10000); // 10 detik = 10000 ms
+  }, 180000); // 3 menit = 180000 ms
 
   // Simpan timer
   refreshTimers.set(kelas_id, timer);
@@ -900,9 +900,20 @@ router.post('/presensi/batalkan/:kelas_id', (req, res) => {
         return res.status(404).json({ message: 'Presensi tidak ditemukan untuk siswa ini di kelas ini' });
       }
 
+      const presensiToUpdate = existingResults[0];
+
+      // Jika presensi sudah dibatalkan, tidak perlu melakukan apa-apa lagi
+      if (presensiToUpdate.status === 'dibatalkan') {
+        return res.status(200).json({
+          message: 'Presensi untuk siswa ini sudah dalam status dibatalkan.',
+          siswa: siswa.nama_lengkap,
+          status: 'dibatalkan'
+        });
+      }
+
       // Update status presensi menjadi 'dibatalkan'
       const updateSQL = 'UPDATE Presensi SET status = "dibatalkan" WHERE id = ?';
-      db.query(updateSQL, [existingResults[0].id], (err, updateResults) => {
+      db.query(updateSQL, [presensiToUpdate.id], (err, updateResults) => {
         if (err) {
           console.error('Error updating presensi:', err);
           return res.status(500).json({ 
@@ -911,8 +922,25 @@ router.post('/presensi/batalkan/:kelas_id', (req, res) => {
           });
         }
 
+        // Hanya kurangi jumlah kehadiran jika status sebelumnya adalah 'hadir'
+        if (presensiToUpdate.status === 'hadir') {
+          const updateLaporanSQL = `
+            UPDATE Laporan_kehadiran
+            SET jumlah_kehadiran = GREATEST(0, jumlah_kehadiran - 1)
+            WHERE siswa_id = ? AND kelas_id = ?
+          `;
+          
+          db.query(updateLaporanSQL, [siswa.id, kelas_id], (err, laporanResults) => {
+            if (err) {
+              // Tetap kirim response sukses karena presensi sudah dibatalkan, tapi log error
+              console.error('Gagal mengurangi jumlah kehadiran di laporan:', err);
+            }
+            console.log(`Jumlah kehadiran untuk siswa ${siswa.nama_lengkap} di kelas ${kelas_id} berhasil dikurangi.`);
+          });
+        }
+
         res.json({
-          message: 'Presensi berhasil dibatalkan!',
+          message: 'Presensi berhasil dibatalkan dan laporan kehadiran telah diperbarui!',
           siswa: siswa.nama_lengkap,
           status: 'dibatalkan'
         });
